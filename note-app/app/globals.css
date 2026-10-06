@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background-color: #0f0f0f;
+    color: #e8e8e8;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* スクロールバーのスタイリング */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2e2e2e;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3e3e3e;
+  }
+
+  /* テキスト選択色 */
+  ::selection {
+    background-color: rgba(124, 106, 247, 0.3);
+    color: #e8e8e8;
+  }
+
+  /* フォーカスアウトライン */
+  :focus-visible {
+    outline: 2px solid rgba(124, 106, 247, 0.5);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* スクロールバー非表示 */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* テキストのクランプ */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* Markdownプレビューのコードブロック */
+.prose pre code {
+  display: block;
+  white-space: pre;
+}
+
+/* チェックボックス付きリスト（GFM） */
+.prose input[type="checkbox"] {
+  accent-color: #7c6af7;
+  margin-right: 6px;
+  cursor: default;
+}

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Codele — Programming Wordle</title>
+<style>
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#fff;font-family:'Courier New',Courier,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;-webkit-font-smoothing:antialiased;user-select:none}
+button{cursor:pointer;border:none;outline:none;font-family:inherit}
+
+/* ===== ANIMATIONS ===== */
+@keyframes flipTile{
+  0%  {transform:rotateX(0deg)}
+  45% {transform:rotateX(-90deg)}
+  55% {transform:rotateX(-90deg)}
+  100%{transform:rotateX(0deg)}
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  10%,50%,90%{transform:translateX(-5px)}
+  30%,70%{transform:translateX(5px)}
+}
+@keyframes slideDown{
+  from{transform:translateY(-120%);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+@keyframes popIn{
+  0%{transform:scale(0.8);opacity:0}
+  70%{transform:scale(1.05)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes bounceIn{
+  0%{transform:scale(0.85);opacity:0}
+  60%{transform:scale(1.03)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes keyPop{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(0.92)}
+}
+
+/* ===== HEADER ===== */
+header{
+  width:100%;max-width:500px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;border-bottom:1px solid #3a3a3c;
+}
+.logo{text-align:center}
+.logo h1{font-size:1.6rem;font-weight:700;letter-spacing:.2em;color:#fff}
+.logo p{font-size:.6rem;letter-spacing:.15em;color:#818384;text-transform:uppercase;margin-top:1px}
+.stats-btn{
+  background:none;color:#818384;padding:4px;border-radius:6px;
+  transition:color .15s;line-height:0;
+}
+.stats-btn:hover{color:#fff}
+
+/* ===== BOARD ===== */
+#board{
+  display:flex;flex-direction:column;gap:6px;
+  margin:16px 0 8px;
+}
+.row{display:flex;gap:6px}
+.row.shake{animation:shake .5s ease-in-out}
+
+/* ===== TILE ===== */
+.tile{
+  width:62px;height:62px;
+  border:2px solid #3a3a3c;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.75rem;font-weight:700;text-transform:uppercase;
+  transition:border-color .05s;
+  perspective:250px;
+}
+.tile.filled{border-color:#818384;transform:scale(1.08);transition:transform .07s}
+.tile.flip{animation:flipTile .5s ease-in-out both}
+.tile.correct{background:#538d4e;border-color:#538d4e;color:#fff}
+.tile.present{background:#b59f3b;border-color:#b59f3b;color:#fff}
+.tile.absent {background:#3a3a3c;border-color:#3a3a3c;color:#fff}
+
+/* ===== KEYBOARD ===== */
+#keyboard{
+  display:flex;flex-direction:column;gap:6px;
+  align-items:center;width:100%;max-width:500px;padding:0 6px 16px;
+}
+.kb-row{display:flex;gap:5px;justify-content:center}
+.key{
+  height:56px;min-width:43px;padding:0 4px;
+  background:#818384;color:#fff;
+  border-radius:4px;font-size:.9rem;font-weight:700;
+  text-transform:uppercase;
+  transition:background .1s,color .1s;
+  display:flex;align-items:center;justify-content:center;
+}
+.key.wide{min-width:65px;font-size:.75rem}
+.key.correct{background:#538d4e}
+.key.present{background:#b59f3b}
+.key.absent {background:#3a3a3c;color:#818384}
+.key:active{animation:keyPop .1s ease-in-out}
+
+/* ===== TOAST ===== */
+#toast{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  background:#fff;color:#111;
+  font-weight:700;font-size:.85rem;
+  padding:8px 16px;border-radius:6px;
+  animation:slideDown .25s ease-out;
+  z-index:100;pointer-events:none;white-space:nowrap;
+  display:none;
+}
+
+/* ===== MODAL OVERLAY ===== */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.72);
+  z-index:50;display:flex;align-items:center;justify-content:center;
+  display:none;
+}
+.overlay.open{display:flex}
+.modal{
+  background:#1a1a1a;border:1px solid #3a3a3c;border-radius:14px;
+  padding:24px 20px;width:90vw;max-width:420px;
+  animation:bounceIn .2s ease-out;
+}
+
+/* ===== RESULT MODAL ===== */
+.result-badge{
+  display:inline-block;padding:3px 14px;border-radius:999px;
+  font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:10px;
+}
+.badge-won{background:#538d4e;color:#fff}
+.badge-lost{background:#3a3a3c;color:#818384}
+.result-msg{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px}
+.meaning-box{
+  background:#111;border:1px solid #3a3a3c;border-radius:8px;
+  padding:12px 14px;margin-bottom:14px;
+}
+.meaning-word{font-family:monospace;font-weight:700;font-size:1rem;color:#538d4e;margin-bottom:4px}
+.meaning-text{font-size:.82rem;color:#ccc;line-height:1.65}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat-cell{display:flex;flex-direction:column;align-items:center}
+.stat-val{font-size:1.3rem;font-weight:700;color:#fff}
+.stat-label{font-size:.65rem;color:#818384;text-align:center;margin-top:2px}
+.dist-title{font-size:.65rem;color:#818384;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.dist-row{display:flex;align-items:center;gap:8px;font-size:.8rem;margin-bottom:5px}
+.dist-num{width:14px;text-align:right;color:#818384;flex-shrink:0}
+.dist-track{flex:1;background:#3a3a3c;border-radius:2px;height:22px;overflow:hidden}
+.dist-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;
+  padding-right:7px;font-size:.72rem;font-weight:700;color:#fff;
+  background:#818384;transition:width .5s ease;border-radius:2px}
+.dist-bar.current{background:#538d4e}
+.play-again{
+  width:100%;padding:12px;margin-top:4px;
+  background:#538d4e;color:#fff;
+  border-radius:8px;font-size:.95rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  transition:background .15s;
+}
+.play-again:hover{background:#6aaf64}
+
+/* ===== STATS MODAL ===== */
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-header h2{font-size:1rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
+.close-btn{background:none;color:#818384;font-size:1.2rem;padding:2px 6px;border-radius:4px;transition:color .1s}
+.close-btn:hover{color:#fff}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:420px){
+  .tile{width:14vw;height:14vw;font-size:1.4rem}
+  .key{min-width:calc((100vw - 60px)/10);height:52px;font-size:.8rem}
+  .key.wide{min-width:calc((100vw - 60px)/6.5)}
+}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+  <div style="width:32px"></div>
+  <div class="logo">
+    <h1>CODELE</h1>
+    <p>Programming Wordle</p>
+  </div>
+  <button class="stats-btn" id="statsBtn" title="統計" aria-label="統計を表示">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="2"  y="14" width="4" height="8" rx="1"/>
+      <rect x="9"  y="9"  width="4" height="13" rx="1"/>
+      <rect x="16" y="4"  width="4" height="18" rx="1"/>
+    </svg>
+  </button>
+</header>
+
+<!-- ゲームボード -->
+<div id="board"></div>
+
+<!-- 仮想キーボード -->
+<div id="keyboard"></div>
+
+<!-- トースト通知 -->
+<div id="toast"></div>
+
+<!-- リザルトモーダル -->
+<div class="overlay" id="resultOverlay">
+  <div class="modal" id="resultModal">
+    <div style="text-align:center">
+      <span class="result-badge" id="resultBadge"></span>
+      <div class="result-msg" id="resultMsg"></div>
+    </div>
+    <div class="meaning-box">
+      <div class="meaning-word" id="meaningWord"></div>
+      <div class="meaning-text" id="meaningText"></div>
+    </div>
+    <div class="stats-grid" id="resultStats"></div>
+    <div class="dist-title">Guess Distribution</div>
+    <div id="resultDist"></div>
+    <button class="play-again" id="playAgainBtn">▶ Play Again</button>
+  </div>
+</div>
+
+<!-- 統計モーダル -->
+<div class="overlay" id="statsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Statistics</h2>
+      <button class="close-btn" id="closeStatsBtn">✕</button>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="dist-title">Guess Distribution</div>
+    <div id="statsDist"></div>
+  </div>
+</div>
+
+<script>
+// ========================================================
+//  単語リスト（5文字・大文字・プログラミング用語）
+// ========================================================
+const WORDS = [
+  {w:'REACT', m:'Meta製のUIコンポーネントライブラリ。仮想DOMを使ってUIを宣言的に記述できる。'},
+  {w:'ARRAY', m:'複数の値を順序付きで格納するデータ構造。インデックスで各要素にアクセスする。'},
+  {w:'CLASS', m:'オブジェクト指向における設計図。プロパティとメソッドをまとめた型の定義。'},
+  {w:'ASYNC', m:'非同期処理を示すキーワード。awaitと組み合わせてPromiseを同期的に扱える。'},
+  {w:'AWAIT', m:'async関数内でPromiseの解決を待つキーワード。非同期処理をシンプルに記述。'},
+  {w:'STACK', m:'LIFO（後入れ先出し）方式のデータ構造。関数の呼び出しスタックにも使われる。'},
+  {w:'QUEUE', m:'FIFO（先入れ先出し）方式のデータ構造。タスクのキューイングなどに活用される。'},
+  {w:'PROXY', m:'他のオブジェクトへのアクセスを仲介するオブジェクト。JSではES6から利用可能。'},
+  {w:'SWIFT', m:'Appleが開発したiOS/macOS向けのプログラミング言語。安全性と高速性が特徴。'},
+  {w:'CACHE', m:'データを一時保存して再利用する仕組み。アクセス速度向上やサーバー負荷軽減に役立つ。'},
+  {w:'SCOPE', m:'変数や関数が参照できる有効範囲。グローバル・ローカル・ブロックスコープなどがある。'},
+  {w:'FETCH', m:'Web APIからデータを取得するブラウザ組み込み関数。Promiseベースで動作する。'},
+  {w:'YIELD', m:'ジェネレータ関数内で値を返すキーワード。関数の実行を一時停止・再開できる。'},
+  {w:'CONST', m:'再代入不可の変数を宣言するキーワード。参照型の場合、中身の変更は可能。'},
+  {w:'REGEX', m:'正規表現（Regular Expression）の略。文字列のパターンマッチングに使用する。'},
+  {w:'QUERY', m:'データベースへの問い合わせ文。SQLのSELECT文やGraphQLのクエリが代表例。'},
+  {w:'MODAL', m:'現在の操作を中断してユーザーに確認を求めるダイアログ。UIコンポーネントの一種。'},
+  {w:'REDUX', m:'JavaScriptアプリの状態管理ライブラリ。単方向データフローを採用している。'},
+  {w:'HOOKS', m:'Reactの関数コンポーネントで状態や副作用を扱うための仕組み。useStateが代表例。'},
+  {w:'SUPER', m:'クラスの親クラスを参照するキーワード。継承時にコンストラクタや親メソッドを呼び出す。'},
+  {w:'PATCH', m:'HTTPメソッドの一つ。リソースの部分的な更新に使われる。PUTは全体更新と区別。'},
+  {w:'TOKEN', m:'認証に使われる短いデータ。JWTはヘッダー・ペイロード・署名の3部構成のトークン。'},
+  {w:'GRAPH', m:'ノードとエッジで構成されるデータ構造。またはGraphQLというAPIクエリ言語の略称。'},
+  {w:'INDEX', m:'DBの検索を高速化する仕組み。また配列の要素番号（インデックス）を指す言葉。'},
+  {w:'CLONE', m:'オブジェクトや配列のコピーを作成すること。浅いコピーと深いコピーがある。'},
+  {w:'MERGE', m:'複数のブランチやデータを統合する操作。Gitのマージは変更履歴を合流させる。'},
+  {w:'BUILD', m:'ソースコードを実行可能な形式に変換するプロセス。バンドル・コンパイル・最適化を含む。'},
+  {w:'PARSE', m:'文字列を特定のデータ構造に変換すること。JSONのパースやHTMLのDOMパースが代表例。'},
+  {w:'EVENT', m:'クリックやキー入力などの発生したできごと。イベントリスナーで検知・処理する。'},
+  {w:'INPUT', m:'ユーザーからのデータ入力、またはHTMLのinput要素。フォーム処理の基本要素。'},
+  {w:'MUTEX', m:'相互排他（Mutual Exclusion）の略。複数スレッドが同時にリソースにアクセスしないよう制御。'},
+  {w:'ROUTE', m:'URLのパスとそれに対応する処理を紐付ける仕組み。Webアプリのルーティング設定。'},
+  {w:'STATE', m:'アプリの現在の状態を表すデータ。ReactのuseStateやReduxのstoreが代表的。'},
+  {w:'DEBUG', m:'プログラムのバグを発見・修正するプロセス。ブレークポイントやconsole.logが主なツール。'},
+  {w:'LOOPS', m:'同じ処理を繰り返す制御構造。for・while・forEach・mapなどがプログラミングの基本。'},
+  {w:'FRAME', m:'アニメーションの1コマ、またはデータ通信の1単位。60fpsが滑らかな表示の目標値。'},
+  {w:'FIBER', m:'React 16から導入された新しいレンダリングエンジン。優先度付きの非同期レンダリングを実現。'},
+  {w:'STORE', m:'ReduxやZustandで状態を保持する中央集権的なオブジェクト。アプリ全体でアクセス可能。'},
+  {w:'CHUNK', m:'データや処理を分割した固まり。Webpackのコード分割（chunking）でバンドルを最適化。'},
+  {w:'HTTPS', m:'SSL/TLSで暗号化されたHTTP通信。ポート443を使用し、現代のWebの標準プロトコル。'},
+  {w:'SHELL', m:'OSのカーネルとユーザーの間のインターフェース。BashやZshなどがUNIX系OSで代表的。'},
+  {w:'FATAL', m:'システムが続行不可能な致命的エラー。ログレベルでCRITICALと並ぶ最高レベルを示す。'},
+  {w:'PIXEL', m:'ディスプレイの最小表示単位。CSSのpx単位やHiDPIスクリーンのデバイスピクセル比に関係する。'},
+  {w:'EAGER', m:'遅延評価（lazy）の対義語で即時評価のこと。データ取得時のeager loadingで使われる。'},
+  {w:'BYTES', m:'8ビット単位のデータ量。ファイルサイズやデータ転送量の基本単位として使われる。'},
+  {w:'NODES', m:'グラフやツリーの各要素。DOMのノードやNode.js（サーバーサイドJS環境）も指す。'},
+  {w:'TYPES', m:'TypeScriptの型定義。型安全性を提供し、開発時のエラー検出を助ける強力な仕組み。'},
+  {w:'SCOPE', m:'変数や関数が参照できる有効範囲。クロージャはスコープを利用した重要なパターン。'},
+  {w:'BENCH', m:'パフォーマンステスト（ベンチマーク）のこと。処理速度や負荷耐性を計測する手法。'},
+  {w:'DRAIN', m:'バッファやキューを空にする操作。Node.jsのストリームでwrite()後にdrainイベントが発火する。'},
+  {w:'CODEC', m:'エンコーダとデコーダの組み合わせ。動画・音声データの圧縮・展開に使用される技術。'},
+  {w:'GRANT', m:'アクセス権限を付与すること。データベースやOAuthのスコープ許可に使われる概念。'},
+];
+
+// 有効な入力単語（バリデーション用）
+const VALID = new Set(WORDS.map(w=>w.w).concat([
+  'ABOUT','ABOVE','ABUSE','ACTOR','AFTER','AGAIN','AGENT','AGILE','ALERT','ALIAS',
+  'ALIGN','ALIVE','ALPHA','ALTER','APPLY','ARENA','ARGUE','ASSET','AUDIO','BADGE',
+  'BASIC','BATCH','BELOW','BLINK','BLOCK','BOUND','BREAK','BRIEF','BROAD','CALLS',
+  'CATCH','CHAIN','CHECK','CHILD','CLEAN','CLICK','CLOSE','COLOR','COMMA','COUNT',
+  'CRASH','CROSS','CRYPT','CURVE','CYCLE','DEFER','DELAY','DELTA','DEPTH','DIRTY',
+  'EMBED','EMPTY','ENTRY','EQUAL','ERROR','EVERY','EXACT','EXIST','EXTRA','FALSE',
+  'FIELD','FINAL','FIRST','FIXED','FLASH','FLOAT','FOCUS','FORCE','FOUND','FRONT',
+  'GIVEN','GREEN','GROUP','GUARD','GUESS','GUIDE','HEAVY','INNER','INTEL','INTRO',
+  'ISSUE','ITEMS','JUMPS','KEEPS','KNOWN','LARGE','LATER','LAYER','LEARN','LEAVE',
+  'LIGHT','LIMIT','LOCAL','LOGIC','LOWER','MACRO','MAGIC','MATCH','MINOR','NAMED',
+  'NEVER','NOTED','OCCUR','OFFER','OFTEN','ORDER','OTHER','OUTER','OWNER','PAGES',
+  'PARTS','PATHS','PHASE','PLACE','PLAIN','POINT','PORTS','POWER','PRINT','PROTO',
+  'PROVE','RAISE','RANGE','RATIO','READS','REDIS','RESET','RIGHT','ROUND','RULES',
+  'SCALA','SCENE','SCORE','SERVE','SHARE','SHIFT','SHORT','SINCE','SIZED','SLASH',
+  'SLEEP','SLICE','SMALL','SMART','SOLID','SOLVE','SPACE','SPAWN','SPLIT','STILL',
+  'STYLE','SWING','TABLE','TASKS','TERMS','TESTS','THEME','THESE','THING','THINK',
+  'THROW','TRACK','TRAIL','TRANS','TREES','TRIAL','TRICK','TRUST','TUPLE','UNDER',
+  'UNION','UNITY','UNTIL','UPPER','USERS','UTILS','VALUE','VALID','VIEWS','WHERE',
+  'WHILE','WHOLE','WIDTH','WRITE','WRONG','LIMIT','DRAFT','STAGE','SCOPE',
+]));
+
+const WIN_MSGS = {1:'Genius! 🧠',2:'Magnificent! 🌟',3:'Impressive! ✨',4:'Splendid! 👏',5:'Great! 🎉',6:'Phew! 😅'};
+const KB_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['ENTER','Z','X','C','V','B','N','M','⌫'],
+];
+const STATS_KEY = 'codele_stats';
+
+// ========================================================
+//  状態
+// ========================================================
+let answer = null;       // {w, m}
+let guesses = [];        // 確定済み推測 [{letter,status}[]][]
+let currentInput = '';   // 現在入力中
+let phase = 'playing';   // 'playing'|'won'|'lost'
+let keyStatuses = {};    // {letter: 'correct'|'present'|'absent'}
+let isRevealing = false; // フリップアニメーション中か
+
+// ========================================================
+//  統計
+// ========================================================
+function loadStats() {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (!raw) return {played:0,won:0,streak:0,maxStreak:0,dist:{1:0,2:0,3:0,4:0,5:0,6:0}};
+    const s = JSON.parse(raw);
+    return {
+      played:    s.played    ?? 0,
+      won:       s.won       ?? 0,
+      streak:    s.streak    ?? 0,
+      maxStreak: s.maxStreak ?? 0,
+      dist:      s.dist      ?? {1:0,2:0,3:0,4:0,5:0,6:0},
+    };
+  } catch { return {played:0,won:0,streak:0,maxStreak:0,dist:{1:0,2:0,3:0,4:0,5:0,6:0}}; }
+}
+function saveStats(s) {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch {}
+}
+
+// ========================================================
+//  判定ロジック（重複文字対応 Wordle互換）
+// ========================================================
+function evaluate(guess, ans) {
+  const result = Array(5).fill(null).map((_,i) => ({letter:guess[i], status:'absent'}));
+  const ansArr = ans.split('');
+  const used   = Array(5).fill(false);
+  // 1st pass: correct
+  for (let i = 0; i < 5; i++) {
+    if (guess[i] === ansArr[i]) { result[i].status = 'correct'; used[i] = true; }
+  }
+  // 2nd pass: present / absent
+  for (let i = 0; i < 5; i++) {
+    if (result[i].status === 'correct') continue;
+    for (let j = 0; j < 5; j++) {
+      if (!used[j] && guess[i] === ansArr[j]) { result[i].status = 'present'; used[j] = true; break; }
+    }
+  }
+  return result;
+}
+
+const PRIORITY = {correct:3, present:2, absent:1, unused:0};
+function updateKeys(tiles) {
+  tiles.forEach(({letter, status}) => {
+    const cur = PRIORITY[keyStatuses[letter] ?? 'unused'];
+    const nw  = PRIORITY[status];
+    if (nw > cur) keyStatuses[letter] = status;
+  });
+}
+
+// ========================================================
+//  DOM操作
+// ========================================================
+function buildBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  for (let r = 0; r < 6; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = `row-${r}`;
+    for (let c = 0; c < 5; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.id = `tile-${r}-${c}`;
+      row.appendChild(tile);
+    }
+    board.appendChild(row);
+  }
+}
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  KB_ROWS.forEach(row => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'kb-row';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (k==='ENTER'||k==='⌫' ? ' wide' : '');
+      btn.textContent = k;
+      btn.dataset.key = k;
+      btn.addEventListener('click', () => handleInput(k));
+      rowDiv.appendChild(btn);
+    });
+    kb.appendChild(rowDiv);
+  });
+}
+
+// 現在入力中の行を描画
+function renderCurrentRow() {
+  const rowIdx = guesses.length;
+  if (rowIdx >= 6) return;
+  for (let c = 0; c < 5; c++) {
+    const tile = document.getElementById(`tile-${rowIdx}-${c}`);
+    const ch = currentInput[c] ?? '';
+    tile.textContent = ch;
+    tile.className = 'tile' + (ch ? ' filled' : '');
+  }
+}
+
+// 確定済み行を（アニメーション付きで）描画
+function revealRow(rowIdx, tiles, callback) {
+  isRevealing = true;
+  tiles.forEach(({letter, status}, c) => {
+    const tile = document.getElementById(`tile-${rowIdx}-${c}`);
+    const startDelay = c * 300; // 各タイルの開始遅延
+
+    setTimeout(() => {
+      // アニメーション開始（まず回転前半）
+      tile.textContent = letter;
+      tile.className = 'tile flip';
+      tile.style.animationDelay = '0ms';
+
+      // 250ms後（ちょうど-90deg付近）に色を確定
+      setTimeout(() => {
+        tile.className = `tile ${status}`;
+      }, 250);
+    }, startDelay);
+  });
+
+  // 全タイル完了後にコールバック
+  const totalTime = (tiles.length - 1) * 300 + 500 + 100;
+  setTimeout(() => {
+    isRevealing = false;
+    if (callback) callback();
+  }, totalTime);
+}
+
+// キーボードの色更新
+function renderKeys() {
+  document.querySelectorAll('.key').forEach(btn => {
+    const k = btn.dataset.key;
+    if (!k || k === 'ENTER' || k === '⌫') return;
+    const st = keyStatuses[k];
+    btn.className = 'key' + (st ? ` ${st}` : '');
+  });
+}
+
+// ========================================================
+//  トースト
+// ========================================================
+let toastTimer = null;
+function showToast(msg, duration = 2000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.animation = 'none';
+  void el.offsetWidth; // reflow
+  el.style.animation = 'slideDown .25s ease-out';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
+// ========================================================
+//  モーダル
+// ========================================================
+function renderDistribution(containerId, stats, currentAttempts) {
+  const el = document.getElementById(containerId);
+  const max = Math.max(...Object.values(stats.dist), 1);
+  let html = '';
+  for (let n = 1; n <= 6; n++) {
+    const count = stats.dist[n] ?? 0;
+    const pct   = Math.max(count > 0 ? Math.round(count/max*100) : 0, count > 0 ? 8 : 0);
+    const cur   = (currentAttempts === n) ? ' current' : '';
+    html += `
+      <div class="dist-row">
+        <span class="dist-num">${n}</span>
+        <div class="dist-track">
+          <div class="dist-bar${cur}" style="width:${pct}%">${count > 0 ? count : ''}</div>
+        </div>
+      </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderStatsGrid(containerId, stats) {
+  const rate = stats.played > 0 ? Math.round(stats.won / stats.played * 100) : 0;
+  document.getElementById(containerId).innerHTML = `
+    <div class="stat-cell"><span class="stat-val">${stats.played}</span><span class="stat-label">Played</span></div>
+    <div class="stat-cell"><span class="stat-val">${rate}</span><span class="stat-label">Win %</span></div>
+    <div class="stat-cell"><span class="stat-val">${stats.streak}</span><span class="stat-label">Streak</span></div>
+    <div class="stat-cell"><span class="stat-val">${stats.maxStreak}</span><span class="stat-label">Max Streak</span></div>
+  `;
+}
+
+function showResult() {
+  const stats = loadStats();
+  const won   = phase === 'won';
+  const attempts = guesses.length;
+
+  // バッジ・メッセージ
+  const badge = document.getElementById('resultBadge');
+  badge.textContent = won ? '✓ Solved' : '✗ Failed';
+  badge.className = 'result-badge ' + (won ? 'badge-won' : 'badge-lost');
+
+  const msg = document.getElementById('resultMsg');
+  if (won) {
+    msg.textContent = `Solved in ${attempts} ${attempts===1?'try':'tries'}!`;
+  } else {
+    msg.innerHTML = `<span style="color:#818384;font-size:.85rem">The answer was</span><br>
+      <span style="font-family:monospace;font-size:1.6rem;letter-spacing:.2em">${answer.w}</span>`;
+  }
+
+  // 解説
+  document.getElementById('meaningWord').textContent = answer.w;
+  document.getElementById('meaningText').textContent = answer.m;
+
+  // 統計
+  renderStatsGrid('resultStats', stats);
+  renderDistribution('resultDist', stats, won ? attempts : null);
+
+  document.getElementById('resultOverlay').classList.add('open');
+}
+
+function showStats() {
+  const stats = loadStats();
+  renderStatsGrid('statsGrid', stats);
+  renderDistribution('statsDist', stats, null);
+  document.getElementById('statsOverlay').classList.add('open');
+}
+
+// ========================================================
+//  入力ハンドラ
+// ========================================================
+function handleInput(key) {
+  if (phase !== 'playing' || isRevealing) return;
+
+  if (key === '⌫' || key === 'BACKSPACE') {
+    if (currentInput.length > 0) {
+      currentInput = currentInput.slice(0, -1);
+      renderCurrentRow();
+    }
+    return;
+  }
+
+  if (key === 'ENTER') {
+    submitGuess();
+    return;
+  }
+
+  if (/^[A-Z]$/.test(key) && currentInput.length < 5) {
+    currentInput += key;
+    renderCurrentRow();
+  }
+}
+
+function submitGuess() {
+  if (currentInput.length < 5) {
+    shakeRow(guesses.length);
+    showToast('Not enough letters');
+    return;
+  }
+  if (!VALID.has(currentInput)) {
+    shakeRow(guesses.length);
+    showToast('Not in word list');
+    return;
+  }
+
+  const tiles = evaluate(currentInput, answer.w);
+  const rowIdx = guesses.length;
+  guesses.push(tiles);
+  updateKeys(tiles);
+  currentInput = '';
+
+  // アニメーション付きで表示
+  revealRow(rowIdx, tiles, () => {
+    renderKeys();
+    const won  = tiles.every(t => t.status === 'correct');
+    const lost = !won && guesses.length >= 6;
+
+    if (won || lost) {
+      phase = won ? 'won' : 'lost';
+      // 統計保存
+      const stats = loadStats();
+      stats.played++;
+      if (won) {
+        stats.won++;
+        stats.streak++;
+        stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
+        stats.dist[guesses.length] = (stats.dist[guesses.length] ?? 0) + 1;
+      } else {
+        stats.streak = 0;
+      }
+      saveStats(stats);
+
+      if (won) showToast(WIN_MSGS[guesses.length] ?? 'Genius!', 2000);
+      setTimeout(showResult, won ? 1800 : 1200);
+    }
+  });
+
+  renderCurrentRow();
+}
+
+function shakeRow(rowIdx) {
+  const row = document.getElementById(`row-${rowIdx}`);
+  row.classList.remove('shake');
+  void row.offsetWidth;
+  row.classList.add('shake');
+  setTimeout(() => row.classList.remove('shake'), 600);
+}
+
+// ========================================================
+//  ゲーム初期化
+// ========================================================
+function startGame() {
+  answer = WORDS[Math.floor(Math.random() * WORDS.length)];
+  guesses = [];
+  currentInput = '';
+  phase = 'playing';
+  keyStatuses = {};
+  isRevealing = false;
+
+  buildBoard();
+  buildKeyboard();
+  renderCurrentRow();
+
+  // モーダルを閉じる
+  document.getElementById('resultOverlay').classList.remove('open');
+  document.getElementById('statsOverlay').classList.remove('open');
+}
+
+// ========================================================
+//  イベント登録
+// ========================================================
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key.toUpperCase();
+  if (k === 'ENTER')     handleInput('ENTER');
+  else if (k === 'BACKSPACE') handleInput('BACKSPACE');
+  else if (/^[A-Z]$/.test(k)) handleInput(k);
+});
+
+document.getElementById('statsBtn').addEventListener('click', showStats);
+document.getElementById('closeStatsBtn').addEventListener('click', () => {
+  document.getElementById('statsOverlay').classList.remove('open');
+});
+document.getElementById('statsOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+document.getElementById('playAgainBtn').addEventListener('click', startGame);
+
+// ========================================================
+//  起動
+// ========================================================
+startGame();
+</script>
+</body>
+</html>

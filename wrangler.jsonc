@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers Static Assets の設定
+  "name": "game-mini",
+  "compatibility_date": "2025-01-01",
+
+  // 静的ファイルをそのまま配信する
+  "assets": {
+    "directory": "."
+  }
+}

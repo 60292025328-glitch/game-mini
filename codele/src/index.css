@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   カスタムアニメーション
+   ============================================================ */
+
+/* タイル フリップ */
+@keyframes flip {
+  0%   { transform: rotateX(0deg);   }
+  45%  { transform: rotateX(-90deg); }
+  55%  { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg);   }
+}
+
+/* タイル内テキストの色反転タイミング（フリップの中間点で切り替え） */
+@keyframes flipInner {
+  0%   { transform: rotateX(0deg);   }
+  45%  { transform: rotateX(90deg);  }
+  55%  { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg);   }
+}
+
+/* 行シェイク */
+@keyframes shake {
+  0%, 100% { transform: translateX(0);    }
+  10%       { transform: translateX(-4px); }
+  30%       { transform: translateX(4px);  }
+  50%       { transform: translateX(-4px); }
+  70%       { transform: translateX(4px);  }
+  90%       { transform: translateX(-2px); }
+}
+
+/* トースト スライドイン */
+@keyframes slideDown {
+  from { transform: translate(-50%, -120%); opacity: 0; }
+  to   { transform: translate(-50%, 0);     opacity: 1; }
+}
+
+/* モーダル スケールイン */
+@keyframes scaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* ============================================================
+   Tailwind の animation ユーティリティに登録（tailwind.config.tsと対応）
+   ============================================================ */
+.animate-flip {
+  animation: flip 0.5s ease-in-out both;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.25s ease-out both;
+  left: 50%;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out both;
+}
+
+/* ============================================================
+   グローバルスタイル
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #111111;
+  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* スクロールバーをダークに */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3a3c;
+  border-radius: 3px;
+}
